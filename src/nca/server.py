@@ -1,8 +1,9 @@
-"""A loopback-only, read-only gallery for locally generated run artifacts."""
+"""A read-only gallery for locally generated run artifacts."""
 from functools import partial
 from html import escape
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import socket
 from urllib.parse import quote, unquote, urlsplit
 
 
@@ -101,8 +102,27 @@ class GalleryHandler(SimpleHTTPRequestHandler):
         pass
 
 
+def local_network_ip() -> str | None:
+    """Find the IPv4 address used by the default route without sending data."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("192.0.2.1", 80))
+            address = probe.getsockname()[0]
+            if address != "0.0.0.0" and not address.startswith("127."):
+                return address
+    except OSError:
+        pass
+    try:
+        for address in socket.gethostbyname_ex(socket.gethostname())[2]:
+            if address != "0.0.0.0" and not address.startswith("127."):
+                return address
+    except OSError:
+        pass
+    return None
+
+
 def make_server(root: Path, port: int = 8000) -> ThreadingHTTPServer:
     root = root.resolve()
     if not root.is_dir():
         raise ValueError(f"Run directory does not exist: {root}. Train a model first or choose --runs-dir.")
-    return ThreadingHTTPServer(("127.0.0.1", port), partial(GalleryHandler, root=root))
+    return ThreadingHTTPServer(("0.0.0.0", port), partial(GalleryHandler, root=root))

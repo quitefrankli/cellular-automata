@@ -20,13 +20,13 @@ Python 3.12+ is required. Dependencies are PyTorch, Click, Pillow, NumPy, and Ma
 
 ## Train
 
-Supply a local PNG. It is converted to RGBA, resized without changing aspect ratio (downscaling only), premultiplied, and centered on a transparent canvas. The default footprint is at most 40×40 in a 64×64 grid. The provided `assets/circle.png` is a synthetic example; supply your own lizard PNG for the requested lizard experiment.
+Supply a local PNG. It is converted to RGBA, resized without changing aspect ratio (downscaling only), premultiplied, and centered on a transparent canvas. The default footprint is at most 40×40 in a 64×64 grid. The provided `assets/circle.png` is a synthetic example; `assets/lizard.png`, `assets/butterfly.png`, and `assets/octopus.png` are more detailed transparent targets.
 
 ```bash
 uv run nca train --target assets/circle.png --mode grow --iterations 8000 --output runs/grow
 uv run nca train --target assets/circle.png --mode persist --iterations 8000 --output runs/persist
 uv run nca train --target assets/circle.png --mode regenerate --iterations 8000 --output runs/regenerate
-# Your own target, explicitly on CUDA:
+# Lizard target, explicitly on CUDA:
 uv run nca train --target assets/lizard.png --mode regenerate --device cuda --iterations 8000 --output runs/lizard
 ```
 
@@ -94,6 +94,24 @@ uv run nca serve --open-browser
 uv run nca serve --runs-dir runs/circle --port 8080
 ```
 
-Open `http://127.0.0.1:8000/` (or the printed port). GIFs play automatically; click any image for its full-size view. Click **Refresh outputs** to discover outputs saved during training. Configuration and loss CSV links accompany each run. Stop with Ctrl+C. The viewer binds to localhost, uses Python's standard-library HTTP server, and adds no dependencies. It displays saved outputs; generate new animations using `simulate` and `regenerate`.
+Open `http://127.0.0.1:8000/` (or the printed port). GIFs play automatically; click any image for its full-size view. Click **Refresh outputs** to discover outputs saved during training. Configuration and loss CSV links accompany each run. Stop with Ctrl+C. The viewer also prints a local network URL for connecting from other devices on the same network. It binds to all IPv4 interfaces, uses Python's standard-library HTTP server, and adds no dependencies. It displays saved outputs; generate new animations using `simulate` and `regenerate`.
 
 For the existing restricted-workspace installation, use `uv run --no-sync nca serve` after installing the updated package.
+
+## Trying more detailed targets
+
+Three transparent Noto Emoji targets are included: `assets/lizard.png`, `assets/butterfly.png`, and `assets/octopus.png`. Source and license details are in `assets/README.md`. Each introduces more colors and fine features than the circle. Start with the standard 64×64 grid and 40-pixel target footprint; inspect `target.png` to see the exact pattern being learned.
+
+```bash
+uv run nca train --target assets/lizard.png --mode regenerate \
+  --batch-size 8 --iterations 8000 --output runs/lizard
+uv run nca train --target assets/butterfly.png --mode persist \
+  --batch-size 8 --iterations 8000 --output runs/butterfly
+uv run nca train --target assets/octopus.png --mode regenerate \
+  --batch-size 8 --iterations 8000 --output runs/octopus
+uv run nca serve --open-browser
+```
+
+Use `--device cuda` when your local PyTorch installation detects the GPU. On CPU, full training can be slow; `--batch-size 4` reduces work and memory (regeneration's default damage count of three still fits). A short run checks the pipeline but does not establish that the target has been learned. Use `--checkpoint-interval 100` to see intermediate growth in the viewer, and resume with a larger total iteration count when needed.
+
+For a custom image, supply its PNG path through `--target`. A transparent background and a clear silhouette give you a target with empty space around it. An opaque photograph trains a filled rectangular image including its background. Fine detail beyond the processed footprint cannot be recovered by enlarging the GIF. Increasing `--grid-size 96 --target-size 64 --min-steps 96 --max-steps 128` retains more target detail at substantially higher compute and memory cost; convergence at those settings is unverified.

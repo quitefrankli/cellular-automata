@@ -138,7 +138,7 @@ def inspect(checkpoint):
 def serve(runs_dir: Path, port: int, open_browser: bool) -> None:
     """Serve a local gallery of growth GIFs, damage demos, targets, and loss plots."""
     import webbrowser
-    from .server import make_server
+    from .server import local_network_ip, make_server
 
     try:
         server = make_server(runs_dir, port)
@@ -147,6 +147,11 @@ def serve(runs_dir: Path, port: int, open_browser: bool) -> None:
     with server:
         url = f"http://127.0.0.1:{server.server_port}/"
         click.echo(f"Viewing {runs_dir.resolve()} at {url}")
+        network_ip = local_network_ip()
+        if network_ip:
+            click.echo(f"Local network: http://{network_ip}:{server.server_port}/")
+        else:
+            click.echo("Local network: IP address could not be detected (listening on all IPv4 interfaces).")
         click.echo("GIFs play automatically. Press Ctrl+C to stop.")
         if open_browser:
             webbrowser.open(url)

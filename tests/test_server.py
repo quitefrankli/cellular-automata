@@ -25,6 +25,7 @@ def test_local_gallery_and_artifact_boundaries(tmp_path: Path):
     except PermissionError:
         pytest.skip("Environment prohibits local sockets")
     with server:
+        assert server.server_address[0] == "0.0.0.0"
         thread = Thread(target=server.serve_forever, daemon=True)
         thread.start()
         base = f"http://127.0.0.1:{server.server_port}"
@@ -59,6 +60,24 @@ def test_serve_help_and_missing_folder(tmp_path):
     result = runner.invoke(main, ["serve", "--runs-dir", str(tmp_path / "missing")])
     assert result.exit_code != 0
     assert "Train a model first" in result.output
+
+
+@pytest.mark.parametrize("address", ["192.168.1.42", None])
+def test_serve_prints_network_address(tmp_path, monkeypatch, address):
+    from unittest.mock import MagicMock
+
+    server = MagicMock()
+    server.server_port = 8080
+    monkeypatch.setattr("nca.server.make_server", lambda root, port: server)
+    monkeypatch.setattr("nca.server.local_network_ip", lambda: address)
+    result = CliRunner().invoke(main, ["serve", "--runs-dir", str(tmp_path), "--port", "8080"])
+    assert result.exit_code == 0
+    assert "http://127.0.0.1:8080/" in result.output
+    if address:
+        assert "Local network: http://192.168.1.42:8080/" in result.output
+    else:
+        assert "IP address could not be detected" in result.output
+    server.serve_forever.assert_called_once()
 
 
 def test_http_handler_without_sockets(tmp_path):
